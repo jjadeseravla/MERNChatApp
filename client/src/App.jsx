@@ -1,7 +1,6 @@
-// import { useState } from 'react'
-import './App.css'
-import { Register } from './Register';
+import { Routes } from './Routes';
 import axios from 'axios';
+import {UserContextProvider } from './UserContext';
 
 function App() {
 
@@ -9,9 +8,9 @@ function App() {
   axios.defaults.withCredentials = true; // so we can set cookies from our api
 
   return (
-    <div className="bg-red-500">
-      <Register/>
-    </div>
+    <UserContextProvider>
+      <Routes/>
+    </UserContextProvider>
   )
 }
 
