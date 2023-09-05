@@ -1,5 +1,6 @@
-import { useState } from "react";
+import { useState, useContext } from "react";
 import axios from 'axios';
+import { UserContext } from "./UserContext";
 
 
 export const Register = () => {
@@ -7,9 +8,13 @@ export const Register = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
 
+  const { setUsername: setLoggedInUsername, setId} = useContext(UserContext);
+
   const register = async (e) => {
     e.preventDefault(); // to avoid data being sent to diff url, eg localhostblabla/?
-    await axios.post('/register', { username, password });
+    const { data } = await axios.post('/register', { username, password });
+    setLoggedInUsername(username);
+    setId(data.id);
 
   }
 
