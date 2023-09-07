@@ -4,6 +4,7 @@ const cookieParser = require('cookie-parser');
 const dotenv = require('dotenv').config();
 const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const bcrypt = require('bcryptjs');
 const User = require('./models/User');
 
 mongoose.connect(process.env.MONGO_URL,  {useNewUrlParser: true, useUnifiedTopology: true })
@@ -15,6 +16,9 @@ mongoose.connect(process.env.MONGO_URL,  {useNewUrlParser: true, useUnifiedTopol
   console.error('Jade said write: Error connecting to MongoDB:', error);
 });
 const jwtSecret = process.env.JWT_SECRET;
+
+
+const bcryptSalt = bcrypt.genSaltSync(5);
 
 const app = express();
 app.use(express.json()); // for typeerror: cannot destructure property 'username' of req.body as it is undefined
@@ -43,10 +47,15 @@ app.get('/profile', (req, res) => {
   }
 })
 
+
 app.post('/register', async (req, res) => {
   const { username, password } = req.body;
   try {
-    const createdUser = await User.create({ username, password });
+    const hashedPassword = bcrypt.hashSync(password, bcryptSalt);
+    const createdUser = await User.create({
+      username,
+      password: hashedPassword,
+    });
     jwt.sign({ userId: createdUser._id, username }, jwtSecret, {}, (err, token) => {
       if (err) throw err;
       res.cookie('cookieNameToken', token, {sameSite: 'none', secure:true}).status(201).json({
@@ -56,6 +65,37 @@ app.post('/register', async (req, res) => {
   } catch (err) {
     if (err) throw err;
     res.status(500).json('error');
+  }
+})
+
+app.post('/login', async (req, res) => {
+  const { username, password} = req.body;
+  try {
+    const findUser = await User.findOne({ username });
+    if (!findUser) {
+      // User not found in the database
+      return res.status(404).json('User not found');
+    }
+    if (findUser) {
+      const passOk = bcrypt.compareSync(password, findUser.password);
+      if (!passOk) {
+        // Password does not match
+        return res.status(401).json('Incorrect password');
+      }
+      if (passOk) {
+        // if password is ok, then we can regenerate the cookie
+        jwt.sign({ userId: findUser._id, username }, jwtSecret, {}, (err, token) => {
+          if (err) throw err;
+          res.cookie('cookieNameToken', token, { sameSite: 'none', secure: true }).status(201).json({
+            id: findUser._id, 
+          })
+        })
+      }
+    }
+  } catch (err) {
+    console.log('HERE')
+    if (err) throw err;
+    res.status(404).json('cannot find user login details');
   }
 })
 
