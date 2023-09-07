@@ -1,8 +1,8 @@
-import { Register } from "./Register";
 import { useContext } from "react";
 import { UserContext } from "./UserContext";
+import { Register } from './Register';
 
-const Routes = () => {
+export const Routes = () => {
 
   const { username} = useContext(UserContext);
 
@@ -11,8 +11,11 @@ const Routes = () => {
   }
 
   return (
-   <Register/>
-  )
+    <div>
+      <Register/>
+    </div>
+);
+  
 }
 
 export default Routes;
