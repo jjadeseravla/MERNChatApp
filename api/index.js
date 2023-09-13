@@ -59,7 +59,7 @@ app.post('/register', async (req, res) => {
     });
     jwt.sign({ userId: createdUser._id, username }, jwtSecret, {}, (err, token) => {
       if (err) throw err;
-      res.cookie('cookieNameToken', token, {sameSite: 'none', secure:true}).status(201).json({
+      res.cookie('token', token, {sameSite: 'none', secure:true}).status(201).json({
         id: createdUser._id,
       })
     });
@@ -85,10 +85,11 @@ app.post('/login', async (req, res) => {
       }
       if (passOk) {
         // if password is ok, then we can regenerate the cookie
+        console.log('-----------------0.1', 'findUser._id', findUser._id, 'username', username, 'idString', findUser._id.toString())
         jwt.sign({ userId: findUser._id, username }, jwtSecret, {}, (err, token) => {
           if (err) throw err;
-          res.cookie('cookieNameToken', token, { sameSite: 'none', secure: true }).status(201).json({
-            id: findUser._id, 
+          res.cookie('token', token, { sameSite: 'none', secure: true }).status(201).json({
+            id: findUser._id.toString(), 
           })
         })
       }
@@ -103,21 +104,30 @@ app.post('/login', async (req, res) => {
 const server = app.listen(4040);
 
 const wss = new ws.WebSocketServer({ server });
+let onlineUsers = [];
 wss.on('connection', (connection, req) => {
   console.log('connected web socket server')
-  connection.send('welcome');
+  // connection.send('welcome');
   const cookies = req.headers.cookie;
+  
   if (cookies) {
     // could be several cookies, so need to split by semicolon
-    const tokenCookieString = cookies.split(';').find(str => str.startsWith('token='));
+    const tokenCookieString = cookies.split(';').find(str => str.startsWith('cookieNameToken='));
+    console.log('-------3---', cookies)
     if (tokenCookieString) {
+      console.log('-------4---')
       const token = tokenCookieString.split('=')[1];
       if (token) {
+        console.log('-------5---')
         jwt.verify(token, jwtSecret, {}, (err, userData) => {
           if (err) throw err;
           const { userId, username } = userData;
           connection.userId = userId;
           connection.username = username;
+
+          console.log('-------6', username)
+
+          onlineUsers = [...onlineUsers,  { userId, username }]
           // all connections sit inside web socket server.clients
         });
       }
@@ -127,10 +137,17 @@ wss.on('connection', (connection, req) => {
   // will show all active connections (who is online)
   //is an object, so spread operator to transform array
   [...wss.clients].forEach(client => {
-    client.send(JSON.stringify(
-      [...wss.clients].map(client => ({userId: client.userId, username: client.username}))
-    ))
+    const str = JSON.stringify({
+      online: onlineUsers.map(user => ({userId: user.userId, username: user.username}))
+    }
+    )
+    client.send(str)
   })
+  // [...wss.clients].forEach(client => {
+  //   client.send(JSON.stringify(
+  //     [...wss.clients].map(client => ({userId: client.userId, username: client.username}))
+  //   ))
+  // })
 
 })
 

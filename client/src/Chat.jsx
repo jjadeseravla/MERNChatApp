@@ -1,8 +1,11 @@
 import { useState, useEffect } from "react";
+import { Avatar } from './Avatar';
 
 export const Chat = () => {
 
+  // eslint-disable-next-line no-unused-vars
   const [ws, setWs] = useState('null');
+  const [onlinePeople, setOnlinePeople] = useState({});
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:4040');
@@ -11,15 +14,40 @@ export const Chat = () => {
     ws.addEventListener('message', handleMessage)
   }, []);
 
+  function showOnlinePeople(peopleArray) {
+    const people = {};
+    peopleArray.forEach(({ userId, username }) => {
+      people[userId] = username;
+    });
+    console.log('peeps', people);
+    console.log('onlinePeople', onlinePeople)
+    return setOnlinePeople(people);
+  }
+
   function handleMessage(e) {
-    const messageData = JSON.parse(e.data);
-    console.log(messageData)
-      ;  }
+    try {
+      const messageData = JSON.parse(e.data);
+      console.log(messageData);
+      if ('online' in messageData) {
+        showOnlinePeople(messageData.online);
+      }
+    } catch (error) {
+      // Handle non-JSON messages here
+      console.error('Received a non-JSON message:', e.data);
+    }
+  }
+  
 
   return (
     <div className="flex h-screen">
       <div className="bg-white w-1/3 flex flex-col">
         <div className="flex-grow">
+          {Object.keys(onlinePeople).map((userId) => (
+            <div key={userId}>
+              <Avatar username={onlinePeople[userId]} userId={userId} online />
+              <span className="border-b border-gray-100 py-2">{onlinePeople[userId]}</span>
+            </div>
+            ))}
         </div>
         <div className="p-2 text-center flex items-center justify-center">
           <span className="mr-2 text-sm text-gray-600 flex items-center">
