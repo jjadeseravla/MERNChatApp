@@ -1,11 +1,19 @@
-import { useState, useEffect } from "react";
+import {
+  useState, useEffect,
+  // useContext
+
+} from "react";
 import { Avatar } from './Avatar';
+import { Logo } from './Logo';
+// import { UserContext } from "./UserContext";
 
 export const Chat = () => {
 
   // eslint-disable-next-line no-unused-vars
   const [ws, setWs] = useState('null');
   const [onlinePeople, setOnlinePeople] = useState({});
+  const [selectedUserId,setSelectedUserId] = useState(null);
+  // const { username } = useContext(UserContext);
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:4040');
@@ -19,6 +27,7 @@ export const Chat = () => {
     peopleArray.forEach(({ userId, username }) => {
       people[userId] = username;
     });
+    console.log('userId', people.userId)
     console.log('peeps', people);
     console.log('onlinePeople', onlinePeople)
     return setOnlinePeople(people);
@@ -36,16 +45,22 @@ export const Chat = () => {
       console.error('Received a non-JSON message:', e.data);
     }
   }
+
+  console.log('selectedUserId', selectedUserId);
   
+  //const onlinePeopleExclOurUser = onlinePeople.filter((person) => person.username !== username);
 
   return (
-    <div className="flex h-screen">
+    <div className="flex h-screen p-2">
       <div className="bg-white w-1/3 flex flex-col">
         <div className="flex-grow">
+          <Logo />
           {Object.keys(onlinePeople).map((userId) => (
-            <div key={userId}>
+            <div onClick={(userId) => setSelectedUserId(userId)}
+              className={"border-b boder-gray-100 py-2 flex items-ceter gap-2 curser-pointer "+ (userId === selectedUserId ? 'bg-blue-50' : '')}
+              key={userId}>
               <Avatar username={onlinePeople[userId]} userId={userId} online />
-              <span className="border-b border-gray-100 py-2">{onlinePeople[userId]}</span>
+              <span className="text-gray-500">{onlinePeople[userId]}</span>
             </div>
             ))}
         </div>

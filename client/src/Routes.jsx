@@ -9,7 +9,7 @@ export const Routes = () => {
 
   if (username) {
     return (
-      <div>
+      <div className="p-3">
         {username} is Logged in!
         <Chat/>
       </div>
