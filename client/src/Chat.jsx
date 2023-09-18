@@ -1,11 +1,11 @@
 import {
   useState, useEffect,
-  // useContext
+  useContext
 
 } from "react";
 import { Avatar } from './Avatar';
 import { Logo } from './Logo';
-// import { UserContext } from "./UserContext";
+import { UserContext } from "./UserContext";
 
 export const Chat = () => {
 
@@ -13,7 +13,7 @@ export const Chat = () => {
   const [ws, setWs] = useState('null');
   const [onlinePeople, setOnlinePeople] = useState({});
   const [selectedUserId,setSelectedUserId] = useState(null);
-  // const { username } = useContext(UserContext);
+  const { username, id } = useContext(UserContext); 
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:4040');
@@ -48,19 +48,38 @@ export const Chat = () => {
 
   console.log('selectedUserId', selectedUserId);
   
+  //to ensure user whos logged in cant see themselves in the chat
+  const onlinePeopleExclOurUser = { ...onlinePeople };
+  delete onlinePeopleExclOurUser[id];
+  // cant do it this way cos its not an arrya, onlinePeople is an obj
   //const onlinePeopleExclOurUser = onlinePeople.filter((person) => person.username !== username);
+  
+  // for (const key in onlinePeople) {
+  //   if (onlinePeople[key] === username) {
+  //     delete onlinePeople[key];
+  //   }
+  // }
+
+  // console.log('new onlinePeople', onlinePeople, 'username', username)
 
   return (
     <div className="flex h-screen p-2">
       <div className="bg-white w-1/3 flex flex-col">
         <div className="flex-grow">
           <Logo />
-          {Object.keys(onlinePeople).map((userId) => (
+          {Object.keys(onlinePeopleExclOurUser).map((userId) => (
             <div onClick={(userId) => setSelectedUserId(userId)}
               className={"border-b boder-gray-100 py-2 flex items-ceter gap-2 curser-pointer "+ (userId === selectedUserId ? 'bg-blue-50' : '')}
               key={userId}>
+              {userId === selectedUserId && (
+                <div className="w-1 bg-blue-500 h-12">
+                  selected
+                </div>
+              )}
+              <div className="flex gap-2 py-2 pl-4 items-center">
               <Avatar username={onlinePeople[userId]} userId={userId} online />
               <span className="text-gray-500">{onlinePeople[userId]}</span>
+                </div>
             </div>
             ))}
         </div>
@@ -78,7 +97,11 @@ export const Chat = () => {
       </div>
       <div className="flex flex-col bg-blue-50 w-2/3 p-2">
         <div className="flex-grow">
-          
+          {!selectedUserId && (
+            <div className="flex h-full flex-grow tems-center justify-center">
+              no selected person
+            </div>
+          )}
         </div>
         {/* {!!selectedUserId && ( */}
           {/* <form className="flex gap-2" onSubmit={sendMessage}> */}
