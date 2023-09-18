@@ -12,8 +12,10 @@ export const Chat = () => {
   // eslint-disable-next-line no-unused-vars
   const [ws, setWs] = useState('null');
   const [onlinePeople, setOnlinePeople] = useState({});
-  const [selectedUserId,setSelectedUserId] = useState(null);
-  const { username, id } = useContext(UserContext); 
+  const [selectedUserId, setSelectedUserId] = useState(null);
+  const [newMsgText, setNewMsgText] = useState('');
+  const [msgs, setMsgs] = useState([]);
+  const { id } = useContext(UserContext); 
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:4040');
@@ -36,14 +38,32 @@ export const Chat = () => {
   function handleMessage(e) {
     try {
       const messageData = JSON.parse(e.data);
-      console.log(messageData);
+      console.log({ e, messageData });
       if ('online' in messageData) {
         showOnlinePeople(messageData.online);
+      } else {
+        //isOur, as in is it you messaging as the user or not
+        setMsgs(prev => ([...prev, { text: messageData.text, isOur: false }]));
       }
     } catch (error) {
       // Handle non-JSON messages here
       console.error('Received a non-JSON message:', e.data);
     }
+  }
+
+  function sendMessage(e) {
+    e.preventDefault();
+    // send a msg and the userId we have selected to websocket server
+    ws.send(JSON.stringify({
+      message: {
+        recipient: selectedUserId,
+        text: newMsgText,
+      }
+    }));
+    // after sending we clear the chat
+    setNewMsgText('');
+    // grab previous value and return it into the array of prev msg objs with text inside, and the new one in it
+    setMsgs(prev => ([...prev, {text: newMsgText, isOur: true}]) )
   }
 
   console.log('selectedUserId', selectedUserId);
@@ -99,15 +119,22 @@ export const Chat = () => {
         <div className="flex-grow">
           {!selectedUserId && (
             <div className="flex h-full flex-grow tems-center justify-center">
-              no selected person
+              <div className="text-gray-300">&larr; no selected person</div>
+            </div>
+          )}
+          {!!selectedUserId && (
+            <div>
+              {msgs.map(message => {
+                <div>{message.text}</div>
+              })}
             </div>
           )}
         </div>
-        {/* {!!selectedUserId && ( */}
-          {/* <form className="flex gap-2" onSubmit={sendMessage}> */}
+        {!!selectedUserId && (
+          <form className="flex gap-2" onSubmit={sendMessage}>
             <input type="text"
-                  //  value={newMessageText}
-                  //  onChange={ev => setNewMessageText(ev.target.value)}
+                   value={newMsgText}
+                   onChange={ev => setNewMsgText(ev.target.value)}
                    placeholder="Type your message here"
                    className="bg-white flex-grow border rounded-sm p-2"/>
             <label className="bg-blue-200 p-2 text-gray-600 cursor-pointer rounded-sm border border-blue-200">
@@ -121,8 +148,8 @@ export const Chat = () => {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
               </svg>
             </button>
-          {/* </form> */}
-        {/* )} */}
+          </form>
+       )} 
       </div>
     </div>
   );

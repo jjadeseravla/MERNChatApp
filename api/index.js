@@ -111,6 +111,7 @@ wss.on('connection', (connection, req) => {
   console.log('connected web socket server')
   // connection.send('welcome');
 
+// read username and id from the cookie for this connection
   const cookies = req.headers.cookie;
   if (cookies) {
     // could be several cookies, so need to split by semicolon
@@ -144,10 +145,28 @@ wss.on('connection', (connection, req) => {
           [...wss.clients].forEach(client => {
             client.send(str);
           });
+
         });
       }
     }
   }
+
+  connection.on('msg', (message, isBinary) => {
+    const messageData = JSON.parse(message.toString());
+    const { recipient, text } = messageData;
+    if (recipient && text) {
+      //transform to an array
+      [...wss.clients].filter(client => client.userId === recipient)
+        .forEach(client => client.send(JSON.stringify({ text, sender: connection.userId })));
+    }
+  })
+
+  // //in the real one they have this here:
+  // [...wss.clients].forEach(client => {
+  //   client.send(JSON.stringify({
+  //     online: [...wss.clients].map(c => ({ userId: c.userId, username: c.userName }))
+  //   }));
+  // });
 
   const isUserDeleted = async (userId) => {
     try {
