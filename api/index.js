@@ -6,6 +6,7 @@ const jwt = require('jsonwebtoken');
 const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const User = require('./models/User');
+const Message = require('./models/Message');
 const ws = require('ws');
 
 mongoose.connect(process.env.MONGO_URL,  {useNewUrlParser: true, useUnifiedTopology: true })
@@ -33,6 +34,10 @@ app.use(cors({
 app.get('/test', (req, res) => {
   res.json('ok')
 });
+
+app.get('/messages/:userId', (req, res) => {
+  res.json(req.params);
+})
 
 app.get('/profile', (req, res) => {
   const token = req.cookies?.token;
@@ -151,13 +156,24 @@ wss.on('connection', (connection, req) => {
     }
   }
 
-  connection.on('msg', (message, isBinary) => {
+  connection.on('msg', async(message) => {
     const messageData = JSON.parse(message.toString());
     const { recipient, text } = messageData;
     if (recipient && text) {
+      const messageDoc = await Message.create({
+        sender: connection.userId,
+        recipient,
+        text,
+      });
       //transform to an array
-      [...wss.clients].filter(client => client.userId === recipient)
-        .forEach(client => client.send(JSON.stringify({ text, sender: connection.userId })));
+      [...wss.clients]
+        .filter(client => client.userId === recipient)
+        .forEach(client => client.send(JSON.stringify({
+          text,
+          sender: connection.userId,
+          recipient,
+          id: messageDoc._id,
+        })));
     }
   })
 

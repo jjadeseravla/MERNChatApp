@@ -1,8 +1,10 @@
 import {
   useState, useEffect,
-  useContext
+  useContext, useRef,
 
 } from "react";
+import axios from 'axios';
+import {uniqBy} from 'lodash';
 import { Avatar } from './Avatar';
 import { Logo } from './Logo';
 import { UserContext } from "./UserContext";
@@ -16,6 +18,7 @@ export const Chat = () => {
   const [newMsgText, setNewMsgText] = useState('');
   const [msgs, setMsgs] = useState([]);
   const { id } = useContext(UserContext); 
+  const divUnderMsgs = useRef();
 
   useEffect(() => {
     const ws = new WebSocket('ws://localhost:4040');
@@ -35,15 +38,29 @@ export const Chat = () => {
     return setOnlinePeople(people);
   }
 
+  function safeStringify(obj) {
+    const seen = new WeakSet();
+    return JSON.stringify(obj, (key, value) => {
+      if (typeof value === 'object' && value !== null) {
+        if (seen.has(value)) {
+          return '[Circular Reference]';
+        }
+        seen.add(value);
+      }
+      return value;
+    });
+  }
+
   function handleMessage(e) {
     try {
       const messageData = JSON.parse(e.data);
-      console.log({ e, messageData });
+      // console.log({ e, messageData });
+      console.log('Received message data:', safeStringify(messageData));
       if ('online' in messageData) {
         showOnlinePeople(messageData.online);
-      } else {
+      } else if ('text' in messageData) {
         //isOur, as in is it you messaging as the user or not
-        setMsgs(prev => ([...prev, { text: messageData.text, isOur: false }]));
+        setMsgs(prev => ([...prev, {...messageData }]));
       }
     } catch (error) {
       // Handle non-JSON messages here
@@ -63,8 +80,27 @@ export const Chat = () => {
     // after sending we clear the chat
     setNewMsgText('');
     // grab previous value and return it into the array of prev msg objs with text inside, and the new one in it
-    setMsgs(prev => ([...prev, {text: newMsgText, isOur: true}]) )
+    setMsgs(prev => ([...prev, {
+      text: newMsgText,
+      sender: id,
+      recipient: selectedUserId,
+      id: Date.now(),
+    }]));
   }
+
+  //runs everytime msgs change
+  useEffect(() => {
+    const div = divUnderMsgs.current;
+    if (div) {
+      div.scrollIntoView({ behavious: 'smooth', block: 'end' });
+    }
+  }, [msgs]);
+
+  useEffect(() => {
+    if (selectedUserId) {
+      axios.get('/messages'+selectedUserId)
+    }
+  }, [selectedUserId])
 
   console.log('selectedUserId', selectedUserId);
   
@@ -81,6 +117,8 @@ export const Chat = () => {
   // }
 
   // console.log('new onlinePeople', onlinePeople, 'username', username)
+
+  const messagesWODuplicates=  uniqBy(msgs, 'id');
 
   return (
     <div className="flex h-screen p-2">
@@ -123,10 +161,19 @@ export const Chat = () => {
             </div>
           )}
           {!!selectedUserId && (
-            <div>
-              {msgs.map(message => {
-                <div>{message.text}</div>
-              })}
+            <div className="relative h-full">
+              <div className="overflow-y-scroll absolute top-0 left-0 right-0 bottom-2">
+                {messagesWODuplicates.map(message => {
+                  <div className={(message.sender === id ? 'text-right' : 'text-left')}>
+                    <div className={"text-left inline-block p-2 my-2 rounded-md text-sm"+(message.sender === id ? 'bg-blue-500 text-white' : 'bg-white text-gray-500')}>
+                      sender: {message.sender}
+                      my id: {id}
+                      {message.text}
+                    </div>
+                  </div>
+                })}
+                <div ref={divUnderMsgs}></div>
+              </div>
             </div>
           )}
         </div>
