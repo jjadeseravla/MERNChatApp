@@ -35,9 +35,34 @@ app.get('/test', (req, res) => {
   res.json('ok')
 });
 
-app.get('/messages/:userId', (req, res) => {
-  res.json(req.params);
-})
+
+async function getUserDataFromReq(req) {
+  return new Promise((resolve, reject) => {
+    const token = req.cookies?.token;
+    if (token) {
+      // 4: token, secret, options and a callback
+      jwt.verify(token, jwtSecret, {}, (err, userData) => {
+        // in frontend you cant read the secret cos its encoded
+        if (err) throw err;
+        // res.json(userData);
+        resolve(userData);
+      })
+    } else {
+      res.status(401).json('no token');
+    }
+  })
+}
+
+app.get('/messages/:userId', async(req, res) => {
+  const { userId } = req.params;
+  const userData = await getUserDataFromReq(req);
+  const ourUserId = userData.userId;
+  const messages = await Message.find({
+    sender: { $in: [userId, ourUserId] },
+    recipient: { $in: [userId, ourUserId] },
+  }).sort({ createdAt: -1 });
+  res.json(messages);
+});
 
 app.get('/profile', (req, res) => {
   const token = req.cookies?.token;
@@ -49,6 +74,7 @@ app.get('/profile', (req, res) => {
       res.json(userData);
     })
   } else {
+    reject('rejecting as no token');
     res.status(401).json('no token');
   }
 })
